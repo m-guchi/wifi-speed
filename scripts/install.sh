@@ -162,13 +162,20 @@ visudo -cf /etc/sudoers.d/wifi-speed >/dev/null
 systemctl daemon-reload
 systemctl enable wifi-speed.timer
 systemctl enable wifi-speed-web.service
-systemctl restart wifi-speed-web.service
 
+echo "==> サービス再起動"
+systemctl restart wifi-speed-web.service
 if [[ "${QUICK}" -eq 1 ]]; then
   systemctl restart wifi-speed.timer
 else
   systemctl enable --now wifi-speed.timer
   systemctl enable --now wifi-speed-web.service
+fi
+
+if ! systemctl is-active --quiet wifi-speed-web.service; then
+  echo "エラー: wifi-speed-web.service の起動に失敗しました" >&2
+  systemctl status wifi-speed-web.service --no-pager -l >&2 || true
+  exit 1
 fi
 
 PI_IP="$(hostname -I | awk '{print $1}')"

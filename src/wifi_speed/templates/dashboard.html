@@ -259,11 +259,13 @@
     </section>
   </div>
 
+  <script id="boot-settings" type="application/json">/*BOOT_SETTINGS*/{}</script>
   <script>
     let chart = null;
     let settingsMin = 5;
     let settingsMax = 1440;
     let currentInterval = null;
+    let canWriteSettings = false;
 
     function fmtMbps(v) {
       return v == null ? "—" : `${Number(v).toFixed(2)} Mbps`;
@@ -424,19 +426,54 @@
       input.select();
     }
 
+    function readBootSettings() {
+      const el = document.getElementById("boot-settings");
+      if (!el) return null;
+      try {
+        const data = JSON.parse(el.textContent);
+        return data && data.interval_minutes != null ? data : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function applySettings(data) {
+      settingsMin = data.interval_minutes_min;
+      settingsMax = data.interval_minutes_max;
+      canWriteSettings = data.can_write_settings !== false;
+      updateIntervalDisplay(data.interval_minutes);
+    }
+
     function updateIntervalDisplay(minutes) {
       currentInterval = minutes;
       document.getElementById("interval-value").textContent = fmtInterval(minutes);
     }
 
     async function loadSettings() {
-      const data = await fetchJson("/api/settings");
-      settingsMin = data.interval_minutes_min;
-      settingsMax = data.interval_minutes_max;
-      updateIntervalDisplay(data.interval_minutes);
+      const boot = readBootSettings();
+      if (boot) {
+        applySettings(boot);
+      }
+
+      try {
+        applySettings(await fetchJson("/api/settings"));
+      } catch (e) {
+        if (!boot) {
+          document.getElementById("interval-value").textContent = "取得失敗";
+          throw e;
+        }
+        console.warn(e);
+      }
     }
 
     async function saveInterval() {
+      if (!canWriteSettings) {
+        document.getElementById("interval-status").textContent =
+          "設定の保存に対応していません。Pi で git pull のあと sudo ./scripts/update.sh を実行してください";
+        document.getElementById("interval-status").className = "interval-status err";
+        return;
+      }
+
       const saveBtn = document.getElementById("interval-save");
       const cancelBtn = document.getElementById("interval-cancel");
       const status = document.getElementById("interval-status");

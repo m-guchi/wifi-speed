@@ -48,7 +48,14 @@ def create_handler(config: Config) -> Type[BaseHTTPRequestHandler]:
             logger.info("%s - %s", self.address_string(), format % args)
 
         def _serve_dashboard(self) -> None:
-            body = TEMPLATE_PATH.read_text(encoding="utf-8").encode("utf-8")
+            current = Config.load(config.config_path)
+            settings = settings_payload(current.interval_minutes)
+            html = TEMPLATE_PATH.read_text(encoding="utf-8")
+            html = html.replace(
+                "/*BOOT_SETTINGS*/{}",
+                json.dumps(settings, ensure_ascii=False),
+            )
+            body = html.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))

@@ -8,11 +8,12 @@ INTERVAL_MIN = 5
 INTERVAL_MAX = 1440
 
 
-def settings_payload(interval_minutes: int) -> dict[str, int]:
+def settings_payload(interval_minutes: int, *, can_write: bool = True) -> dict[str, int | bool]:
     return {
         "interval_minutes": interval_minutes,
         "interval_minutes_min": INTERVAL_MIN,
         "interval_minutes_max": INTERVAL_MAX,
+        "can_write_settings": can_write,
     }
 
 
