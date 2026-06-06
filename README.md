@@ -24,8 +24,22 @@ Pi Zero W のリソース制約を考慮し、軽量な `speedtest-cli` と SQLi
 ```bash
 git clone <このリポジトリ> wifi-speed
 cd wifi-speed
-chmod +x scripts/install.sh
+chmod +x scripts/install.sh scripts/update.sh
 sudo ./scripts/install.sh
+```
+
+**2 回目以降（git pull 後）** はクイック更新で十分です（apt update / venv 再作成をスキップし、数十秒程度）:
+
+```bash
+git pull
+sudo ./scripts/update.sh
+# または: sudo ./scripts/install.sh   （.venv があると自動でクイック更新）
+```
+
+依存パッケージの再インストールや venv の作り直しが必要なときだけ:
+
+```bash
+sudo ./scripts/install.sh --full
 ```
 
 インストール後、30 分ごとに自動測定が始まります。初回は起動 5 分後です。
