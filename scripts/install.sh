@@ -37,9 +37,20 @@ echo "==> コマンドの登録"
 ln -sf "${INSTALL_DIR}/.venv/bin/wifi-speed" /usr/local/bin/wifi-speed
 
 echo "==> systemd ユニットの登録"
-cp "${INSTALL_DIR}/systemd/wifi-speed.service" /etc/systemd/system/
+if ! id "${SERVICE_USER}" &>/dev/null; then
+  echo "エラー: サービスユーザー '${SERVICE_USER}' が存在しません。" >&2
+  echo "sudo -u <ユーザー名> ./scripts/install.sh で実行するか、SUDO_USER を設定してください。" >&2
+  exit 1
+fi
+SERVICE_GROUP="$(id -gn "${SERVICE_USER}")"
+
+for unit in wifi-speed.service wifi-speed-web.service; do
+  sed \
+    -e "s/^User=.*/User=${SERVICE_USER}/" \
+    -e "s/^Group=.*/Group=${SERVICE_GROUP}/" \
+    "${INSTALL_DIR}/systemd/${unit}" > "/etc/systemd/system/${unit}"
+done
 cp "${INSTALL_DIR}/systemd/wifi-speed.timer" /etc/systemd/system/
-cp "${INSTALL_DIR}/systemd/wifi-speed-web.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now wifi-speed.timer
 systemctl enable --now wifi-speed-web.service
