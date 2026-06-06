@@ -33,6 +33,9 @@ if [[ ! -f "${CONFIG_DIR}/config.yaml" ]]; then
   sed -i "s|/var/lib/wifi-speed/results.db|${DATA_DIR}/results.db|" "${CONFIG_DIR}/config.yaml"
 fi
 
+echo "==> コマンドの登録"
+ln -sf "${INSTALL_DIR}/.venv/bin/wifi-speed" /usr/local/bin/wifi-speed
+
 echo "==> systemd ユニットの登録"
 cp "${INSTALL_DIR}/systemd/wifi-speed.service" /etc/systemd/system/
 cp "${INSTALL_DIR}/systemd/wifi-speed.timer" /etc/systemd/system/
