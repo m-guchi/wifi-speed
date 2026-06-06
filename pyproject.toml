@@ -3,7 +3,7 @@ name = "wifi-speed"
 version = "0.1.0"
 description = "Periodic WiFi speed monitoring for Raspberry Pi Zero W"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.7"
 dependencies = [
     "pyyaml>=6.0",
 ]
@@ -12,7 +12,7 @@ dependencies = [
 wifi-speed = "wifi_speed.cli:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]

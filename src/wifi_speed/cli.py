@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
-
-import logging
+from typing import List, Optional
 
 from wifi_speed.config import Config
 from wifi_speed.runner import run_and_save
@@ -12,7 +12,7 @@ from wifi_speed.storage import ResultStore
 from wifi_speed.web import run_server
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Raspberry Pi Zero W 用 WiFi 速度監視ツール",
     )
@@ -118,7 +118,7 @@ def _cmd_summary(config: Config, hours: int) -> int:
     return 0
 
 
-def _cmd_serve(config: Config, host: str | None, port: int | None) -> int:
+def _cmd_serve(config: Config, host: Optional[str], port: Optional[int]) -> int:
     if host:
         config.web_host = host
     if port:

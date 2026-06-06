@@ -4,7 +4,7 @@ import json
 import logging
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Type
 from urllib.parse import parse_qs, urlparse
 
 from wifi_speed.config import Config
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "dashboard.html"
 
 
-def create_handler(config: Config) -> type[BaseHTTPRequestHandler]:
+def create_handler(config: Config) -> Type[BaseHTTPRequestHandler]:
     store = ResultStore(config.database_path)
 
     class WifiSpeedHandler(BaseHTTPRequestHandler):

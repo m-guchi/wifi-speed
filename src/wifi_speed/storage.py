@@ -4,6 +4,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional, Union
 
 
 @dataclass
@@ -12,12 +13,12 @@ class SpeedResult:
     download_mbps: float
     upload_mbps: float
     ping_ms: float
-    server_name: str | None
-    server_id: str | None
-    ssid: str | None
-    signal_dbm: int | None
-    link_quality: str | None
-    error: str | None = None
+    server_name: Optional[str]
+    server_id: Optional[str]
+    ssid: Optional[str]
+    signal_dbm: Optional[int]
+    link_quality: Optional[str]
+    error: Optional[str] = None
 
     @property
     def success(self) -> bool:
@@ -85,7 +86,7 @@ class ResultStore:
             )
             return int(cursor.lastrowid)
 
-    def recent(self, limit: int = 20, hours: int | None = None) -> list[SpeedResult]:
+    def recent(self, limit: int = 20, hours: Optional[int] = None) -> list[SpeedResult]:
         with self._connect() as conn:
             if hours is None:
                 rows = conn.execute(
@@ -124,7 +125,7 @@ class ResultStore:
 
         return [_row_to_result(row) for row in rows]
 
-    def summary(self, hours: int = 24) -> dict[str, float | int | None]:
+    def summary(self, hours: int = 24) -> dict[str, Union[float, int, None]]:
         with self._connect() as conn:
             row = conn.execute(
                 """

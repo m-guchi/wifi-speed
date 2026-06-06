@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import yaml
 
@@ -25,7 +25,7 @@ class Config:
     web_port: int = 8080
 
     @classmethod
-    def load(cls, path: Path | None = None) -> Config:
+    def load(cls, path: Optional[Path] = None) -> Config:
         config_path = path or _find_config_path()
         if config_path is None:
             return cls()
@@ -46,7 +46,7 @@ class Config:
         )
 
 
-def _find_config_path() -> Path | None:
+def _find_config_path() -> Optional[Path]:
     for candidate in DEFAULT_CONFIG_PATHS:
         if candidate.exists():
             return candidate

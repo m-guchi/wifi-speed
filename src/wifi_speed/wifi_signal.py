@@ -3,14 +3,15 @@ from __future__ import annotations
 import re
 import subprocess
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
 class WifiSignal:
-    ssid: str | None
-    signal_dbm: int | None
-    link_quality: str | None
-    interface: str | None
+    ssid: Optional[str]
+    signal_dbm: Optional[int]
+    link_quality: Optional[str]
+    interface: Optional[str]
 
 
 def collect_wifi_signal(interface: str = "wlan0") -> WifiSignal:
@@ -37,21 +38,21 @@ def collect_wifi_signal(interface: str = "wlan0") -> WifiSignal:
     return WifiSignal(ssid, signal_dbm, link_quality, interface)
 
 
-def _extract_ssid(text: str) -> str | None:
+def _extract_ssid(text: str) -> Optional[str]:
     match = re.search(r'ESSID:"([^"]*)"', text)
     if match and match.group(1):
         return match.group(1)
     return None
 
 
-def _extract_signal_dbm(text: str) -> int | None:
+def _extract_signal_dbm(text: str) -> Optional[int]:
     match = re.search(r"Signal level=(-?\d+)\s*dBm", text)
     if match:
         return int(match.group(1))
     return None
 
 
-def _extract_link_quality(text: str) -> str | None:
+def _extract_link_quality(text: str) -> Optional[str]:
     match = re.search(r"Link Quality=(\S+)", text)
     if match:
         return match.group(1)

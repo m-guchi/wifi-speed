@@ -4,6 +4,7 @@ import json
 import subprocess
 import time
 from datetime import datetime, timezone
+from typing import Optional, Union
 
 from wifi_speed.config import Config
 from wifi_speed.storage import ResultStore, SpeedResult
@@ -15,7 +16,7 @@ def run_speedtest(config: Config) -> SpeedResult:
     measured_at = datetime.now(timezone.utc)
     wifi = collect_wifi_signal() if config.collect_wifi_signal else WifiSignal(None, None, None, None)
 
-    last_error: str | None = None
+    last_error: Optional[str] = None
     for attempt in range(config.retry_count + 1):
         try:
             raw = _execute_speedtest(config)
@@ -86,7 +87,7 @@ def _execute_speedtest(config: Config) -> str:
     return output.strip()
 
 
-def _parse_speedtest_output(raw: str) -> dict[str, float | str | None]:
+def _parse_speedtest_output(raw: str) -> dict[str, Union[float, str, None]]:
     """speedtest-cli --json または Ookla speedtest --format=json を解析する。"""
     try:
         data = json.loads(raw)
