@@ -114,6 +114,53 @@
       color: var(--muted);
       font-size: 0.85rem;
     }
+    .settings-form {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 0.75rem;
+    }
+    .settings-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .settings-form input {
+      width: 8rem;
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+    }
+    .settings-form button {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--dl);
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+    .settings-form button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+    .settings-status {
+      width: 100%;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .settings-status.ok { color: var(--ul); }
+    .settings-status.err { color: var(--error); }
+    .settings-hint {
+      margin: 0.75rem 0 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
     @media (max-width: 600px) {
       .meta { text-align: left; }
       header { flex-direction: column; align-items: flex-start; }
@@ -137,6 +184,19 @@
       <div class="card dl"><div class="label">Download</div><div class="value" id="latest-dl">—</div></div>
       <div class="card ul"><div class="label">Upload</div><div class="value" id="latest-ul">—</div></div>
       <div class="card ping"><div class="label">Ping</div><div class="value" id="latest-ping">—</div></div>
+    </section>
+
+    <section class="panel">
+      <h2>測定間隔</h2>
+      <form class="settings-form" id="settings-form">
+        <label>
+          間隔（分）
+          <input type="number" id="interval-minutes" min="5" max="1440" step="1" required>
+        </label>
+        <button type="submit" id="settings-save">保存</button>
+        <div class="settings-status" id="settings-status"></div>
+      </form>
+      <p class="settings-hint">5〜1440 分。保存すると systemd タイマーにも反映されます（初回起動後 5 分の測定は変わりません）。</p>
     </section>
 
     <section class="panel">
@@ -283,6 +343,45 @@
       }).join("");
     }
 
+    async function loadSettings() {
+      const res = await fetch("/api/settings");
+      const data = await res.json();
+      const input = document.getElementById("interval-minutes");
+      input.min = data.interval_minutes_min;
+      input.max = data.interval_minutes_max;
+      input.value = data.interval_minutes;
+    }
+
+    async function saveSettings(event) {
+      event.preventDefault();
+      const button = document.getElementById("settings-save");
+      const status = document.getElementById("settings-status");
+      const minutes = Number(document.getElementById("interval-minutes").value);
+
+      button.disabled = true;
+      status.textContent = "保存中…";
+      status.className = "settings-status";
+
+      try {
+        const res = await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ interval_minutes: minutes }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "保存に失敗しました");
+        }
+        status.textContent = data.message || "保存しました";
+        status.className = "settings-status ok";
+      } catch (e) {
+        status.textContent = e.message || "保存に失敗しました";
+        status.className = "settings-status err";
+      } finally {
+        button.disabled = false;
+      }
+    }
+
     async function refresh() {
       try {
         const [latest, chartData, history, summary] = await Promise.all([
@@ -304,6 +403,9 @@
       }
     }
 
+    document.getElementById("settings-form").addEventListener("submit", saveSettings);
+
+    loadSettings().catch((e) => console.error(e));
     refresh();
     setInterval(refresh, 60000);
   </script>

@@ -8,6 +8,7 @@ from typing import Callable, Type
 from urllib.parse import parse_qs, urlparse
 
 from wifi_speed.config import Config
+from wifi_speed.settings import apply_interval_minutes, settings_payload
 from wifi_speed.storage import ResultStore, result_to_dict
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ def create_handler(config: Config) -> Type[BaseHTTPRequestHandler]:
                 "/api/results": self._serve_results,
                 "/api/chart": self._serve_chart,
                 "/api/summary": self._serve_summary,
+                "/api/settings": self._serve_settings,
             }
 
             handler = routes.get(parsed.path)
@@ -35,6 +37,13 @@ def create_handler(config: Config) -> Type[BaseHTTPRequestHandler]:
 
             query = parse_qs(parsed.query)
             handler(query)
+
+        def do_POST(self) -> None:
+            parsed = urlparse(self.path)
+            if parsed.path != "/api/settings":
+                self._send_json({"error": "not found"}, status=404)
+                return
+            self._update_settings()
 
         def log_message(self, format: str, *args: object) -> None:
             logger.info("%s - %s", self.address_string(), format % args)
@@ -69,6 +78,38 @@ def create_handler(config: Config) -> Type[BaseHTTPRequestHandler]:
         def _serve_summary(self, query: dict[str, list[str]]) -> None:
             hours = _query_int(query, "hours", 24, minimum=1, maximum=8760)
             self._send_json({"summary": store.summary(hours)})
+
+        def _serve_settings(self, query: dict[str, list[str]]) -> None:
+            del query
+            current = Config.load(config.config_path)
+            self._send_json(settings_payload(current.interval_minutes))
+
+        def _update_settings(self) -> None:
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                raw = self.rfile.read(length).decode("utf-8")
+                payload = json.loads(raw) if raw else {}
+            except (ValueError, json.JSONDecodeError):
+                self._send_json({"ok": False, "error": "リクエスト形式が不正です"}, status=400)
+                return
+
+            if "interval_minutes" not in payload:
+                self._send_json({"ok": False, "error": "interval_minutes が必要です"}, status=400)
+                return
+
+            try:
+                minutes = int(payload["interval_minutes"])
+            except (TypeError, ValueError):
+                self._send_json({"ok": False, "error": "interval_minutes は整数で指定してください"}, status=400)
+                return
+
+            ok, message = apply_interval_minutes(minutes)
+            if not ok:
+                self._send_json({"ok": False, "error": message}, status=400)
+                return
+
+            config.interval_minutes = minutes
+            self._send_json({"ok": True, "message": message, **settings_payload(minutes)})
 
         def _send_json(self, payload: object, status: int = 200) -> None:
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")

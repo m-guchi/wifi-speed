@@ -50,7 +50,17 @@ for unit in wifi-speed.service wifi-speed-web.service; do
     -e "s/^Group=.*/Group=${SERVICE_GROUP}/" \
     "${INSTALL_DIR}/systemd/${unit}" > "/etc/systemd/system/${unit}"
 done
-cp "${INSTALL_DIR}/systemd/wifi-speed.timer" /etc/systemd/system/
+
+INTERVAL_MINUTES="$(grep -E '^interval_minutes:' "${CONFIG_DIR}/config.yaml" | awk '{print $2}' || echo 30)"
+sed -e "s/^OnUnitActiveSec=.*/OnUnitActiveSec=${INTERVAL_MINUTES}min/" \
+  "${INSTALL_DIR}/systemd/wifi-speed.timer" > /etc/systemd/system/wifi-speed.timer
+
+chmod 755 "${INSTALL_DIR}/scripts/apply-settings.sh"
+cat > /etc/sudoers.d/wifi-speed <<EOF
+${SERVICE_USER} ALL=(root) NOPASSWD: ${INSTALL_DIR}/scripts/apply-settings.sh
+EOF
+chmod 440 /etc/sudoers.d/wifi-speed
+visudo -cf /etc/sudoers.d/wifi-speed >/dev/null
 systemctl daemon-reload
 systemctl enable --now wifi-speed.timer
 systemctl enable --now wifi-speed-web.service

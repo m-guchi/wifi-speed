@@ -84,12 +84,15 @@ wifi-speed run
 
 測定間隔を変える場合は `config.yaml` に加え、`systemd/wifi-speed.timer` の `OnUnitActiveSec` も合わせて変更し、`sudo systemctl daemon-reload && sudo systemctl restart wifi-speed.timer` を実行してください。
 
+**Web ダッシュボードからも変更できます**（「測定間隔」パネル）。保存すると設定ファイルと systemd タイマーに自動反映されます。
+
 ## Web ダッシュボード
 
 ブラウザから以下が確認できます。
 
 - 最新の測定値（DL / UL / Ping）
 - 直近 24 時間のグラフ
+- 測定間隔の変更（Web ダッシュボードから保存可能）
 - 集計（平均・最小・最大）
 - 測定履歴テーブル
 

@@ -23,6 +23,7 @@ class Config:
     retry_delay_seconds: int = 60
     web_host: str = "0.0.0.0"
     web_port: int = 8080
+    config_path: Optional[Path] = field(default=None, repr=False)
 
     @classmethod
     def load(cls, path: Optional[Path] = None) -> Config:
@@ -43,6 +44,7 @@ class Config:
             retry_delay_seconds=int(data.get("retry_delay_seconds", 60)),
             web_host=str(data.get("web_host", "0.0.0.0")),
             web_port=int(data.get("web_port", 8080)),
+            config_path=config_path,
         )
 
 
