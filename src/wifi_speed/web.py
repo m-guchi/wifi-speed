@@ -27,7 +27,7 @@ def create_handler(config: Config) -> Type[BaseHTTPRequestHandler]:
                 "/api/results": self._serve_results,
                 "/api/chart": self._serve_chart,
                 "/api/summary": self._serve_summary,
-                "/api/settings": self._serve_settings,
+                "/api/settings": self._serve_settings_get,
             }
 
             handler = routes.get(parsed.path)
@@ -39,11 +39,10 @@ def create_handler(config: Config) -> Type[BaseHTTPRequestHandler]:
             handler(query)
 
         def do_POST(self) -> None:
-            parsed = urlparse(self.path)
-            if parsed.path != "/api/settings":
-                self._send_json({"error": "not found"}, status=404)
-                return
-            self._update_settings()
+            self._handle_settings_write()
+
+        def do_PUT(self) -> None:
+            self._handle_settings_write()
 
         def log_message(self, format: str, *args: object) -> None:
             logger.info("%s - %s", self.address_string(), format % args)
@@ -79,10 +78,17 @@ def create_handler(config: Config) -> Type[BaseHTTPRequestHandler]:
             hours = _query_int(query, "hours", 24, minimum=1, maximum=8760)
             self._send_json({"summary": store.summary(hours)})
 
-        def _serve_settings(self, query: dict[str, list[str]]) -> None:
+        def _serve_settings_get(self, query: dict[str, list[str]]) -> None:
             del query
             current = Config.load(config.config_path)
             self._send_json(settings_payload(current.interval_minutes))
+
+        def _handle_settings_write(self) -> None:
+            parsed = urlparse(self.path)
+            if parsed.path != "/api/settings":
+                self._send_json({"error": "not found"}, status=404)
+                return
+            self._update_settings()
 
         def _update_settings(self) -> None:
             try:

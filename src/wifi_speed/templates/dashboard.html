@@ -48,6 +48,85 @@
       font-size: 0.85rem;
       text-align: right;
     }
+    .interval-wrap {
+      margin-top: 0.35rem;
+    }
+    .interval-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .interval-chip:hover {
+      border-color: var(--dl);
+      background: #152033;
+    }
+    .interval-chip .value {
+      color: var(--dl);
+      font-weight: 700;
+    }
+    .interval-chip .hint {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+    .interval-editor {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      margin-top: 0.35rem;
+    }
+    .interval-editor[hidden] {
+      display: none;
+    }
+    .interval-editor input {
+      width: 4.5rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      text-align: right;
+    }
+    .interval-editor span.unit {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .interval-editor button {
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .interval-editor button.primary {
+      background: var(--dl);
+      border-color: var(--dl);
+      color: #fff;
+    }
+    .interval-editor button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+    .interval-status {
+      width: 100%;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .interval-status.ok { color: var(--ul); }
+    .interval-status.err { color: var(--error); }
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -114,53 +193,6 @@
       color: var(--muted);
       font-size: 0.85rem;
     }
-    .settings-form {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: end;
-      gap: 0.75rem;
-    }
-    .settings-form label {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-    .settings-form input {
-      width: 8rem;
-      padding: 0.45rem 0.55rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      font: inherit;
-    }
-    .settings-form button {
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--dl);
-      color: #fff;
-      font: inherit;
-      cursor: pointer;
-    }
-    .settings-form button:disabled {
-      opacity: 0.6;
-      cursor: wait;
-    }
-    .settings-status {
-      width: 100%;
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-    .settings-status.ok { color: var(--ul); }
-    .settings-status.err { color: var(--error); }
-    .settings-hint {
-      margin: 0.75rem 0 0;
-      color: var(--muted);
-      font-size: 0.8rem;
-    }
     @media (max-width: 600px) {
       .meta { text-align: left; }
       header { flex-direction: column; align-items: flex-start; }
@@ -177,6 +209,19 @@
       <div class="meta">
         <div id="last-updated">読み込み中…</div>
         <div>60秒ごとに自動更新</div>
+        <div class="interval-wrap">
+          <button type="button" class="interval-chip" id="interval-chip" title="クリックして測定間隔を変更">
+            測定間隔 <span class="value" id="interval-value">—</span>
+            <span class="hint">変更</span>
+          </button>
+          <div class="interval-editor" id="interval-editor" hidden>
+            <input type="number" id="interval-input" min="5" max="1440" step="1" inputmode="numeric">
+            <span class="unit">分</span>
+            <button type="button" class="primary" id="interval-save">保存</button>
+            <button type="button" id="interval-cancel">キャンセル</button>
+            <div class="interval-status" id="interval-status"></div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -184,19 +229,6 @@
       <div class="card dl"><div class="label">Download</div><div class="value" id="latest-dl">—</div></div>
       <div class="card ul"><div class="label">Upload</div><div class="value" id="latest-ul">—</div></div>
       <div class="card ping"><div class="label">Ping</div><div class="value" id="latest-ping">—</div></div>
-    </section>
-
-    <section class="panel">
-      <h2>測定間隔</h2>
-      <form class="settings-form" id="settings-form">
-        <label>
-          間隔（分）
-          <input type="number" id="interval-minutes" min="5" max="1440" step="1" required>
-        </label>
-        <button type="submit" id="settings-save">保存</button>
-        <div class="settings-status" id="settings-status"></div>
-      </form>
-      <p class="settings-hint">5〜1440 分。保存すると systemd タイマーにも反映されます（初回起動後 5 分の測定は変わりません）。</p>
     </section>
 
     <section class="panel">
@@ -229,6 +261,9 @@
 
   <script>
     let chart = null;
+    let settingsMin = 5;
+    let settingsMax = 1440;
+    let currentInterval = null;
 
     function fmtMbps(v) {
       return v == null ? "—" : `${Number(v).toFixed(2)} Mbps`;
@@ -242,6 +277,34 @@
       if (!iso) return "—";
       const d = new Date(iso);
       return d.toISOString().replace("T", " ").slice(0, 19);
+    }
+
+    function fmtInterval(minutes) {
+      return minutes == null ? "—" : `${minutes} 分`;
+    }
+
+    async function fetchJson(url, options) {
+      const res = await fetch(url, options);
+      const contentType = res.headers.get("content-type") || "";
+      const text = await res.text();
+
+      if (contentType.includes("application/json")) {
+        const data = JSON.parse(text);
+        if (!res.ok) {
+          const message = data.error || data.message || `HTTP ${res.status}`;
+          throw new Error(message);
+        }
+        return data;
+      }
+
+      if (text.trimStart().startsWith("<")) {
+        if (options && options.method === "POST") {
+          throw new Error("設定の保存に対応していません。Pi で git pull のあと sudo ./scripts/update.sh を実行してください");
+        }
+        throw new Error("サーバーから HTML が返されました。Web サービスを更新してください");
+      }
+
+      throw new Error(text.slice(0, 120) || `HTTP ${res.status}`);
     }
 
     function renderLatest(data) {
@@ -343,52 +406,76 @@
       }).join("");
     }
 
-    async function loadSettings() {
-      const res = await fetch("/api/settings");
-      const data = await res.json();
-      const input = document.getElementById("interval-minutes");
-      input.min = data.interval_minutes_min;
-      input.max = data.interval_minutes_max;
-      input.value = data.interval_minutes;
+    function showIntervalDisplay() {
+      document.getElementById("interval-chip").hidden = false;
+      document.getElementById("interval-editor").hidden = true;
+      document.getElementById("interval-status").textContent = "";
+      document.getElementById("interval-status").className = "interval-status";
     }
 
-    async function saveSettings(event) {
-      event.preventDefault();
-      const button = document.getElementById("settings-save");
-      const status = document.getElementById("settings-status");
-      const minutes = Number(document.getElementById("interval-minutes").value);
+    function showIntervalEditor() {
+      document.getElementById("interval-chip").hidden = true;
+      document.getElementById("interval-editor").hidden = false;
+      const input = document.getElementById("interval-input");
+      input.min = settingsMin;
+      input.max = settingsMax;
+      input.value = currentInterval != null ? currentInterval : settingsMin;
+      input.focus();
+      input.select();
+    }
 
-      button.disabled = true;
+    function updateIntervalDisplay(minutes) {
+      currentInterval = minutes;
+      document.getElementById("interval-value").textContent = fmtInterval(minutes);
+    }
+
+    async function loadSettings() {
+      const data = await fetchJson("/api/settings");
+      settingsMin = data.interval_minutes_min;
+      settingsMax = data.interval_minutes_max;
+      updateIntervalDisplay(data.interval_minutes);
+    }
+
+    async function saveInterval() {
+      const saveBtn = document.getElementById("interval-save");
+      const cancelBtn = document.getElementById("interval-cancel");
+      const status = document.getElementById("interval-status");
+      const minutes = Number(document.getElementById("interval-input").value);
+
+      saveBtn.disabled = true;
+      cancelBtn.disabled = true;
       status.textContent = "保存中…";
-      status.className = "settings-status";
+      status.className = "interval-status";
 
       try {
-        const res = await fetch("/api/settings", {
+        const data = await fetchJson("/api/settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ interval_minutes: minutes }),
         });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
+        if (!data.ok) {
           throw new Error(data.error || "保存に失敗しました");
         }
+        updateIntervalDisplay(data.interval_minutes);
         status.textContent = data.message || "保存しました";
-        status.className = "settings-status ok";
+        status.className = "interval-status ok";
+        setTimeout(showIntervalDisplay, 900);
       } catch (e) {
         status.textContent = e.message || "保存に失敗しました";
-        status.className = "settings-status err";
+        status.className = "interval-status err";
       } finally {
-        button.disabled = false;
+        saveBtn.disabled = false;
+        cancelBtn.disabled = false;
       }
     }
 
     async function refresh() {
       try {
         const [latest, chartData, history, summary] = await Promise.all([
-          fetch("/api/latest").then((r) => r.json()),
-          fetch("/api/chart?hours=24&limit=200").then((r) => r.json()),
-          fetch("/api/results?hours=168&limit=50").then((r) => r.json()),
-          fetch("/api/summary?hours=24").then((r) => r.json()),
+          fetchJson("/api/latest"),
+          fetchJson("/api/chart?hours=24&limit=200"),
+          fetchJson("/api/results?hours=168&limit=50"),
+          fetchJson("/api/summary?hours=24"),
         ]);
 
         renderLatest(latest);
@@ -403,9 +490,23 @@
       }
     }
 
-    document.getElementById("settings-form").addEventListener("submit", saveSettings);
+    document.getElementById("interval-chip").addEventListener("click", showIntervalEditor);
+    document.getElementById("interval-cancel").addEventListener("click", showIntervalDisplay);
+    document.getElementById("interval-save").addEventListener("click", saveInterval);
+    document.getElementById("interval-input").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveInterval();
+      }
+      if (event.key === "Escape") {
+        showIntervalDisplay();
+      }
+    });
 
-    loadSettings().catch((e) => console.error(e));
+    loadSettings().catch((e) => {
+      document.getElementById("interval-value").textContent = "取得失敗";
+      console.error(e);
+    });
     refresh();
     setInterval(refresh, 60000);
   </script>
