@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WiFi Speed Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1419;
+      --card: #1a2332;
+      --border: #2d3a4f;
+      --text: #e8edf4;
+      --muted: #8b9cb3;
+      --dl: #3b82f6;
+      --ul: #22c55e;
+      --ping: #f59e0b;
+      --error: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: right;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .card .label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 0.25rem;
+    }
+    .card .value {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .card.dl .value { color: var(--dl); }
+    .card.ul .value { color: var(--ul); }
+    .card.ping .value { color: var(--ping); }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .panel h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.5rem 1rem;
+      font-size: 0.9rem;
+    }
+    .stats dt { color: var(--muted); }
+    .stats dd { margin: 0; font-weight: 600; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th, td {
+      padding: 0.5rem 0.4rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    th { color: var(--muted); font-weight: 500; }
+    .err { color: var(--error); }
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+    .wifi {
+      margin-top: 0.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    @media (max-width: 600px) {
+      .meta { text-align: left; }
+      header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>WiFi Speed Monitor</h1>
+        <div class="wifi" id="wifi-info">—</div>
+      </div>
+      <div class="meta">
+        <div id="last-updated">読み込み中…</div>
+        <div>60秒ごとに自動更新</div>
+      </div>
+    </header>
+
+    <section class="cards" id="latest-cards">
+      <div class="card dl"><div class="label">Download</div><div class="value" id="latest-dl">—</div></div>
+      <div class="card ul"><div class="label">Upload</div><div class="value" id="latest-ul">—</div></div>
+      <div class="card ping"><div class="label">Ping</div><div class="value" id="latest-ping">—</div></div>
+    </section>
+
+    <section class="panel">
+      <h2>直近 24 時間の推移</h2>
+      <canvas id="chart" height="120"></canvas>
+    </section>
+
+    <section class="panel">
+      <h2>24 時間集計</h2>
+      <dl class="stats" id="summary-stats"></dl>
+    </section>
+
+    <section class="panel">
+      <h2>測定履歴</h2>
+      <div id="history-empty" class="empty" hidden>まだ測定結果がありません</div>
+      <table id="history-table" hidden>
+        <thead>
+          <tr>
+            <th>日時 (UTC)</th>
+            <th>DL</th>
+            <th>UL</th>
+            <th>Ping</th>
+            <th>WiFi</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    let chart = null;
+
+    function fmtMbps(v) {
+      return v == null ? "—" : `${Number(v).toFixed(2)} Mbps`;
+    }
+
+    function fmtPing(v) {
+      return v == null ? "—" : `${Number(v).toFixed(2)} ms`;
+    }
+
+    function fmtTime(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return d.toISOString().replace("T", " ").slice(0, 19);
+    }
+
+    function renderLatest(data) {
+      const r = data.result;
+      if (!r) {
+        document.getElementById("latest-dl").textContent = "—";
+        document.getElementById("latest-ul").textContent = "—";
+        document.getElementById("latest-ping").textContent = "—";
+        document.getElementById("wifi-info").textContent = "測定データなし";
+        return;
+      }
+
+      if (r.error) {
+        document.getElementById("latest-dl").textContent = "Error";
+        document.getElementById("latest-ul").textContent = "—";
+        document.getElementById("latest-ping").textContent = "—";
+        document.getElementById("wifi-info").textContent = r.error;
+        return;
+      }
+
+      document.getElementById("latest-dl").textContent = fmtMbps(r.download_mbps);
+      document.getElementById("latest-ul").textContent = fmtMbps(r.upload_mbps);
+      document.getElementById("latest-ping").textContent = fmtPing(r.ping_ms);
+
+      const wifi = [];
+      if (r.ssid) wifi.push(r.ssid);
+      if (r.signal_dbm != null) wifi.push(`${r.signal_dbm} dBm`);
+      document.getElementById("wifi-info").textContent = wifi.length ? wifi.join(" / ") : "—";
+    }
+
+    function renderSummary(summary) {
+      const el = document.getElementById("summary-stats");
+      const items = [
+        ["測定回数", `${summary.total}（成功 ${summary.success_count}）`],
+        ["平均 DL", fmtMbps(summary.avg_download)],
+        ["平均 UL", fmtMbps(summary.avg_upload)],
+        ["平均 Ping", fmtPing(summary.avg_ping)],
+        ["DL 最小", fmtMbps(summary.min_download)],
+        ["DL 最大", fmtMbps(summary.max_download)],
+      ];
+      el.innerHTML = items.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+    }
+
+    function renderChart(results) {
+      const labels = results.map((r) => fmtTime(r.measured_at));
+      const dl = results.map((r) => r.download_mbps);
+      const ul = results.map((r) => r.upload_mbps);
+
+      const ctx = document.getElementById("chart");
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            { label: "Download (Mbps)", data: dl, borderColor: "#3b82f6", tension: 0.2 },
+            { label: "Upload (Mbps)", data: ul, borderColor: "#22c55e", tension: 0.2 },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: "#e8edf4" } } },
+          scales: {
+            x: { ticks: { color: "#8b9cb3", maxTicksLimit: 8 } },
+            y: { ticks: { color: "#8b9cb3" }, beginAtZero: true },
+          },
+        },
+      });
+    }
+
+    function renderHistory(results) {
+      const reversed = [...results].reverse();
+      const empty = document.getElementById("history-empty");
+      const table = document.getElementById("history-table");
+      const body = document.getElementById("history-body");
+
+      if (!reversed.length) {
+        empty.hidden = false;
+        table.hidden = true;
+        body.innerHTML = "";
+        return;
+      }
+
+      empty.hidden = true;
+      table.hidden = false;
+      body.innerHTML = reversed.map((r) => {
+        if (r.error) {
+          return `<tr><td>${fmtTime(r.measured_at)}</td><td colspan="4" class="err">${r.error}</td></tr>`;
+        }
+        const wifi = [r.ssid, r.signal_dbm != null ? `${r.signal_dbm}dBm` : null].filter(Boolean).join(" ");
+        return `<tr>
+          <td>${fmtTime(r.measured_at)}</td>
+          <td>${Number(r.download_mbps).toFixed(2)}</td>
+          <td>${Number(r.upload_mbps).toFixed(2)}</td>
+          <td>${Number(r.ping_ms).toFixed(2)}</td>
+          <td>${wifi || "—"}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    async function refresh() {
+      try {
+        const [latest, chartData, history, summary] = await Promise.all([
+          fetch("/api/latest").then((r) => r.json()),
+          fetch("/api/chart?hours=24&limit=200").then((r) => r.json()),
+          fetch("/api/results?hours=168&limit=50").then((r) => r.json()),
+          fetch("/api/summary?hours=24").then((r) => r.json()),
+        ]);
+
+        renderLatest(latest);
+        renderChart(chartData.results || []);
+        renderSummary(summary.summary || {});
+        renderHistory(history.results || []);
+        document.getElementById("last-updated").textContent =
+          `最終更新: ${new Date().toLocaleString("ja-JP")}`;
+      } catch (e) {
+        document.getElementById("last-updated").textContent = "更新に失敗しました";
+        console.error(e);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 60000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+[Unit]
+Description=WiFi speed web dashboard (wifi-speed)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/wifi-speed
+ExecStart=/opt/wifi-speed/.venv/bin/wifi-speed --config /etc/wifi-speed/config.yaml serve
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic WiFi speed measurement timer
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+Unit=wifi-speed.service
+
+[Install]
+WantedBy=timers.target

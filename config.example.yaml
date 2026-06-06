@@ -1,0 +1,24 @@
+# wifi-speed 設定ファイル
+# コピー: cp config.example.yaml config.yaml
+
+# 測定間隔（分）— systemd timer と合わせて使用
+interval_minutes: 30
+
+# 結果の保存先
+database_path: /var/lib/wifi-speed/results.db
+
+# speedtest コマンド（Pi では apt install speedtest-cli 推奨）
+speedtest_command: speedtest-cli
+speedtest_args:
+  - --json
+
+# WiFi 信号強度も記録する
+collect_wifi_signal: true
+
+# 測定失敗時のリトライ回数
+retry_count: 2
+retry_delay_seconds: 60
+
+# Web ダッシュボード（http://<ラズパイのIP>:8080/）
+web_host: "0.0.0.0"
+web_port: 8080
